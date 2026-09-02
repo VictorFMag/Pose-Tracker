@@ -100,9 +100,21 @@ def draw_value(
     )
 
 
-def send_pose_data(sender: socket.socket, pose_data: dict[str, float]) -> None:
+def send_pose_data(sender: socket.socket, pose_data: dict[str, object]) -> None:
     packet = json.dumps(pose_data).encode("utf-8")
     sender.sendto(packet, (UDP_HOST, UDP_PORT))
+
+
+def serialize_world_landmarks(world_landmarks) -> list[list[float]]:
+    return [
+        [
+            landmark.x,
+            landmark.y,
+            landmark.z,
+            landmark.visibility,
+        ]
+        for landmark in world_landmarks
+    ]
 
 
 def main() -> None:
@@ -225,6 +237,11 @@ def main() -> None:
                             "Head",
                             head_tilt,
                             (255, 255, 0),
+                        )
+
+                    if result.pose_world_landmarks:
+                        pose_data["world_landmarks"] = serialize_world_landmarks(
+                            result.pose_world_landmarks.landmark
                         )
 
                     if pose_data:
