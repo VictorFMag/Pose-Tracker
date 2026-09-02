@@ -69,10 +69,75 @@ def draw_angle(
     )
 
 
+def draw_head_angle(frame, landmarks, mp_pose) -> None:
+    left_ear = landmarks[mp_pose.PoseLandmark.LEFT_EAR]
+    right_ear = landmarks[mp_pose.PoseLandmark.RIGHT_EAR]
+    left_shoulder = landmarks[
+        mp_pose.PoseLandmark.LEFT_SHOULDER
+    ]
+    right_shoulder = landmarks[
+        mp_pose.PoseLandmark.RIGHT_SHOULDER
+    ]
+    nose = landmarks[mp_pose.PoseLandmark.NOSE]
+
+    required_landmarks = [
+        left_ear,
+        right_ear,
+        left_shoulder,
+        right_shoulder,
+        nose,
+    ]
+
+    if min(
+        point.visibility for point in required_landmarks
+    ) < 0.5:
+        return
+
+    ear_angle = math.degrees(
+        math.atan2(
+            right_ear.y - left_ear.y,
+            right_ear.x - left_ear.x,
+        )
+    )
+
+    shoulder_angle = math.degrees(
+        math.atan2(
+            right_shoulder.y - left_shoulder.y,
+            right_shoulder.x - left_shoulder.x,
+        )
+    )
+
+    head_angle = ear_angle - shoulder_angle
+
+    while head_angle > 180:
+        head_angle -= 360
+
+    while head_angle < -180:
+        head_angle += 360
+
+    frame_height, frame_width = frame.shape[:2]
+
+    position = (
+        int(nose.x * frame_width) + 15,
+        int(nose.y * frame_height) - 20,
+    )
+
+    cv2.putText(
+        frame,
+        f"Head: {head_angle:.0f} deg",
+        position,
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 255, 0),
+        2,
+        cv2.LINE_AA,
+    )
+
+
 def main() -> None:
     camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    # Keep this exact order so DirectShow selects MJPG at 60 FPS.
+    # Keep this order so DirectShow selects MJPG at 60 FPS.
     camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     camera.set(cv2.CAP_PROP_FPS, 60)
@@ -171,6 +236,12 @@ def main() -> None:
                     mp_pose.PoseLandmark.RIGHT_KNEE,
                     mp_pose.PoseLandmark.RIGHT_ANKLE,
                     "R knee",
+                )
+
+                draw_head_angle(
+                    frame,
+                    landmarks,
+                    mp_pose,
                 )
 
             current_time = time.perf_counter()
